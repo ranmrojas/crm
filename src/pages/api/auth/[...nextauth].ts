@@ -20,15 +20,17 @@ export default NextAuth({
           const db = await getDb()
           
           // Obtener usuario con sus roles y permisos
-          const user = await db.get(`
+          const result = await db.query(`
             SELECT u.*, uc.role, uc.is_creator, c.id as company_id, c.name as company_name,
                    s.id as store_id, s.name as store_name
             FROM users u 
             LEFT JOIN user_companies uc ON u.id = uc.user_id 
             LEFT JOIN companies c ON uc.company_id = c.id
-            LEFT JOIN stores s ON c.id = s.company_id AND s.is_main = 1
-            WHERE u.email = ?
+            LEFT JOIN stores s ON c.id = s.company_id AND s.is_main = true
+            WHERE u.email = $1
           `, [credentials.email])
+
+          const user = result.rows[0]
 
           if (!user) {
             return null
@@ -42,7 +44,7 @@ export default NextAuth({
 
           // Determinar el rol del usuario
           let role = 'user'
-          if (user.is_creator === 1) {
+          if (user.is_creator) {
             role = 'super_admin'
           } else if (user.role) {
             role = user.role
