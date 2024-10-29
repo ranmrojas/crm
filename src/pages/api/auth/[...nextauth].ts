@@ -2,6 +2,23 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { getDb } from '../../../services/db'
 import bcrypt from 'bcryptjs'
+import { User } from 'next-auth'
+
+interface CustomUser extends User {
+  id: string
+  email: string
+  name: string
+  role: string
+  companies: any[]
+  currentCompany: {
+    id: string
+    name: string
+  }
+  currentStore: {
+    id: string
+    name: string
+  }
+}
 
 export default NextAuth({
   providers: [
@@ -11,7 +28,7 @@ export default NextAuth({
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<CustomUser | null> {
         try {
           if (!credentials?.email || !credentials?.password) {
             return null
@@ -19,7 +36,6 @@ export default NextAuth({
 
           const db = await getDb()
           
-          // Obtener usuario con sus roles y permisos
           const result = await db.query(`
             SELECT u.*, uc.role, uc.is_creator, c.id as company_id, c.name as company_name,
                    s.id as store_id, s.name as store_name
@@ -42,7 +58,6 @@ export default NextAuth({
             return null
           }
 
-          // Determinar el rol del usuario
           let role = 'user'
           if (user.is_creator) {
             role = 'super_admin'
@@ -55,12 +70,13 @@ export default NextAuth({
             email: user.email,
             name: user.name,
             role: role,
+            companies: [], // Array vacío por defecto
             currentCompany: {
-              id: user.company_id,
+              id: user.company_id?.toString(),
               name: user.company_name
             },
             currentStore: {
-              id: user.store_id,
+              id: user.store_id?.toString(),
               name: user.store_name
             }
           }
