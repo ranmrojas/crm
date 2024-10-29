@@ -5,10 +5,16 @@ import { TextSizeProvider } from '../context/TextSizeContext'
 import AlertContainer from '../components/AlertContainer'
 import '../styles/globals.css'
 
+type CustomAppProps = AppProps & {
+  pageProps: {
+    session?: any;
+  }
+}
+
 function MyApp({ 
   Component, 
   pageProps: { session, ...pageProps } 
-}: AppProps) {
+}: CustomAppProps) {
   return (
     <SessionProvider 
       session={session}
