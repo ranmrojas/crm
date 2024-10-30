@@ -10,7 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ message: 'No autorizado' })
     }
 
-    // Solo permitir super_admin
     if (session.user.role !== 'super_admin') {
       return res.status(403).json({ message: 'Acceso denegado. Se requiere rol de super administrador.' })
     }
@@ -19,8 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       try {
-        // Obtener todos los permisos ordenados por nombre
-        const permissions = await db.all(`
+        const result = await db.query(`
           SELECT id, name, description 
           FROM permissions 
           ORDER BY 
@@ -33,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name
         `)
         
-        res.status(200).json(permissions)
+        res.status(200).json(result.rows)
       } catch (error) {
         console.error('Error al obtener permisos:', error)
         res.status(500).json({ message: 'Error al obtener permisos' })

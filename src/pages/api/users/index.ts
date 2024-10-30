@@ -11,7 +11,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ message: 'No autorizado' })
     }
 
-    // Verificar si el usuario tiene el rol adecuado
     if (session.user.role !== 'super_admin' && session.user.role !== 'admin') {
       return res.status(403).json({ message: 'No tienes permisos para realizar esta acción' })
     }
@@ -20,29 +19,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       try {
-        const companyId = session.user.currentCompany?.id;
+        const companyId = session.user.currentCompany?.id
 
         if (!companyId) {
-          return res.status(400).json({ message: 'No se encontró la empresa actual' });
+          return res.status(400).json({ message: 'No se encontró la empresa actual' })
         }
 
-        // Consulta para obtener usuarios según el rol
         const query = session.user.role === 'super_admin'
           ? `
             SELECT u.id, u.name, u.email, uc.role 
             FROM users u
             JOIN user_companies uc ON u.id = uc.user_id
-            WHERE uc.company_id = ?
+            WHERE uc.company_id = $1
           `
           : `
             SELECT u.id, u.name, u.email, uc.role 
             FROM users u
             JOIN user_companies uc ON u.id = uc.user_id
-            WHERE uc.company_id = ? AND uc.role != 'super_admin'
-          `;
+            WHERE uc.company_id = $1 AND uc.role != 'super_admin'
+          `
 
-        const users = await db.all(query, [companyId]);
-        res.status(200).json(users)
+        const result = await db.query(query, [companyId])
+        res.status(200).json(result.rows)
       } catch (error) {
         console.error('Error al obtener usuarios:', error)
         res.status(500).json({ message: 'Error al obtener usuarios' })
@@ -57,8 +55,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Verificar si el email ya existe
-        const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [email])
-        if (existingUser) {
+        const existingUserResult = await db.query(
+          'SELECT id FROM users WHERE email = $1',
+          [email]
+        )
+        
+        if (existingUserResult.rows[0]) {
           return res.status(400).json({ message: 'El email ya está registrado' })
         }
 
@@ -70,31 +72,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const hashedPassword = await bcrypt.hash(password, 10)
 
         // Iniciar transacción
-        await db.run('BEGIN TRANSACTION')
+        await db.query('BEGIN')
 
         try {
           // Crear usuario
-          const userResult = await db.run(
-            'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+          const userResult = await db.query(
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id',
             [name, email, hashedPassword]
           )
 
           // Asignar usuario a la empresa con el rol especificado
-          await db.run(
-            'INSERT INTO user_companies (user_id, company_id, role) VALUES (?, ?, ?)',
-            [userResult.lastID, companyId, role]
+          await db.query(
+            'INSERT INTO user_companies (user_id, company_id, role) VALUES ($1, $2, $3)',
+            [userResult.rows[0].id, companyId, role]
           )
 
-          await db.run('COMMIT')
+          await db.query('COMMIT')
 
           res.status(201).json({
-            id: userResult.lastID,
+            id: userResult.rows[0].id,
             name,
             email,
             role
           })
         } catch (error) {
-          await db.run('ROLLBACK')
+          await db.query('ROLLBACK')
           throw error
         }
       } catch (error) {

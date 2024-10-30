@@ -1,12 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import bcrypt from 'bcryptjs'
 import { getDb } from '../../../services/db'
-import { signIn } from 'next-auth/react'
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -39,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     )
     const companyId = companyInsertResult.rows[0].id
 
-    // Asignar usuario como super_admin y creador de la empresa
+    // Asignar usuario como super_admin
     await db.query(
       'INSERT INTO user_companies (user_id, company_id, role, is_creator) VALUES ($1, $2, $3, $4)',
       [userId, companyId, 'super_admin', true]
@@ -51,10 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ['Principal', companyId, true]
     )
 
-    // Iniciar sesión automáticamente después del registro
-    await signIn('credentials', { email, password, redirect: false })
-
-    res.status(201).json({ message: 'Usuario registrado exitosamente' })
+    res.status(201).json({ 
+      message: 'Usuario registrado exitosamente',
+      credentials: {
+        email,
+        companyId
+      }
+    })
   } catch (error) {
     console.error(error)
     return res.status(500).json({ message: 'Error en el servidor' })

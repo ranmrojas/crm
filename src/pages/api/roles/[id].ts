@@ -17,17 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { name, permissions } = req.body
 
       // Verificar que no se esté modificando el rol super_admin
-      const role = await db.get('SELECT * FROM roles WHERE id = ?', [id])
+      const roleResult = await db.query('SELECT * FROM roles WHERE id = $1', [id])
+      const role = roleResult.rows[0]
+      
       if (role.name === 'super_admin') {
         return res.status(403).json({ message: 'No se puede modificar el rol super_admin' })
       }
 
-      await db.run('UPDATE roles SET name = ? WHERE id = ?', [name, id])
-      await db.run('DELETE FROM role_permissions WHERE role_id = ?', [id])
+      await db.query('UPDATE roles SET name = $1 WHERE id = $2', [name, id])
+      await db.query('DELETE FROM role_permissions WHERE role_id = $1', [id])
 
       for (let permissionId of permissions) {
-        await db.run(
-          'INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+        await db.query(
+          'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
           [id, permissionId]
         )
       }
@@ -40,13 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'DELETE') {
     try {
       // Verificar que no se esté eliminando el rol super_admin
-      const role = await db.get('SELECT * FROM roles WHERE id = ?', [id])
+      const roleResult = await db.query('SELECT * FROM roles WHERE id = $1', [id])
+      const role = roleResult.rows[0]
+      
       if (role.name === 'super_admin') {
         return res.status(403).json({ message: 'No se puede eliminar el rol super_admin' })
       }
 
-      await db.run('DELETE FROM role_permissions WHERE role_id = ?', [id])
-      await db.run('DELETE FROM roles WHERE id = ?', [id])
+      await db.query('DELETE FROM role_permissions WHERE role_id = $1', [id])
+      await db.query('DELETE FROM roles WHERE id = $1', [id])
       res.status(200).json({ message: 'Rol eliminado exitosamente' })
     } catch (error) {
       console.error('Error al eliminar rol:', error)

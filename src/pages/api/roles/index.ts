@@ -18,9 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       try {
-        const roles = await db.all(`
+        const result = await db.query(`
           SELECT r.id, r.name, r.description,
-                 GROUP_CONCAT(rp.permission_id) as permissions
+                 array_agg(rp.permission_id) as permissions
           FROM roles r
           LEFT JOIN role_permissions rp ON r.id = rp.role_id
           GROUP BY r.id
@@ -32,13 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             END, r.name
         `)
 
-        // Formatear los permisos como array
-        const formattedRoles = roles.map(role => ({
+        const roles = result.rows.map(role => ({
           ...role,
-          permissions: role.permissions ? role.permissions.split(',').map(Number) : []
+          permissions: role.permissions[0] ? role.permissions : []
         }))
 
-        res.status(200).json(formattedRoles)
+        res.status(200).json(roles)
       } catch (error) {
         console.error('Error al obtener roles:', error)
         res.status(500).json({ message: 'Error al obtener roles' })
@@ -51,15 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ message: 'Datos inválidos' })
         }
 
-        const result = await db.run(
-          'INSERT INTO roles (name) VALUES (?)',
+        const roleResult = await db.query(
+          'INSERT INTO roles (name) VALUES ($1) RETURNING id',
           [name]
         )
-        const roleId = result.lastID
+        const roleId = roleResult.rows[0].id
 
         for (let permissionId of permissions) {
-          await db.run(
-            'INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+          await db.query(
+            'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
             [roleId, permissionId]
           )
         }
