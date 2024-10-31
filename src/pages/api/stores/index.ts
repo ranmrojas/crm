@@ -14,13 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       const userId = parseInt(session.user.id as string)
-      const stores = await db.all(`
+      const result = await db.query(`
         SELECT stores.* 
         FROM stores 
         JOIN companies ON stores.company_id = companies.id 
-        WHERE companies.user_id = ?
+        WHERE companies.user_id = $1
       `, [userId])
-      res.status(200).json(stores)
+      
+      res.status(200).json(result.rows)
     } catch (error) {
       console.error('Error al obtener las sucursales:', error)
       res.status(500).json({ message: 'Error al obtener las sucursales' })
@@ -31,18 +32,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const userId = parseInt(session.user.id as string)
       
       // Obtener la compañía del usuario
-      const company = await db.get('SELECT id FROM companies WHERE user_id = ?', [userId])
+      const companyResult = await db.query(
+        'SELECT id FROM companies WHERE user_id = $1',
+        [userId]
+      )
       
-      if (!company) {
+      if (!companyResult.rows[0]) {
         return res.status(400).json({ message: 'No se encontró la empresa del usuario' })
       }
 
-      const result = await db.run(
-        'INSERT INTO stores (name, company_id, is_main) VALUES (?, ?, ?)',
-        [name, company.id, 0]
+      const result = await db.query(
+        'INSERT INTO stores (name, company_id, is_main) VALUES ($1, $2, $3) RETURNING *',
+        [name, companyResult.rows[0].id, false]
       )
 
-      res.status(201).json({ id: result.lastID, name, is_main: false })
+      res.status(201).json(result.rows[0])
     } catch (error) {
       console.error('Error al crear la sucursal:', error)
       res.status(500).json({ message: 'Error al crear la sucursal' })
