@@ -1,28 +1,47 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server"
+import type { JWT } from "next-auth/jwt"
 
-export function middleware(req: NextRequest) {
-  const token = req.cookies.get('token') // Suponiendo que el token está en las cookies
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token as JWT & {
+      role?: string
+    }
+    
+    // Verificar acceso a rutas protegidas
+    if (req.nextUrl.pathname.startsWith("/api/users") || 
+        req.nextUrl.pathname.startsWith("/api/roles") || 
+        req.nextUrl.pathname.startsWith("/api/permissions")) {
+      
+      // Permitir acceso a usuarios autenticados para rutas de usuarios
+      if (req.nextUrl.pathname.startsWith("/api/users")) {
+        if (!token?.role || (token.role !== "super_admin" && token.role !== "admin")) {
+          return new NextResponse(null, { status: 403 })
+        }
+      }
+      
+      // Verificar permisos para roles y permisos
+      if ((req.nextUrl.pathname.startsWith("/api/roles") || 
+           req.nextUrl.pathname.startsWith("/api/permissions")) && 
+          (!token?.role || token.role !== "super_admin")) {
+        return new NextResponse(null, { status: 403 })
+      }
+    }
 
-  // Verificar si el usuario está autenticado
-  if (!token) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token
+    },
   }
-
-  // Verificar permisos para roles y permisos
-  if ((req.nextUrl.pathname.startsWith('/api/roles') || 
-       req.nextUrl.pathname.startsWith('/api/permissions')) && 
-      (!token.role || token.role !== 'super_admin')) {
-    return NextResponse.redirect(new URL('/403', req.url))
-  }
-
-  return NextResponse.next()
-}
+)
 
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/api/users/:path*',
     '/api/roles/:path*',
     '/api/permissions/:path*'
-  ],
+  ]
 }
