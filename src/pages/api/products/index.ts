@@ -18,8 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Se requiere el ID de la tienda' })
       }
 
-      const products = await db.all('SELECT * FROM products WHERE store_id = ?', [storeId])
-      res.status(200).json(products)
+      const result = await db.query('SELECT * FROM products WHERE store_id = $1', [storeId])
+      res.status(200).json(result.rows)
     } catch (error) {
       console.error('Error al obtener los productos:', error)
       res.status(500).json({ message: 'Error al obtener los productos' })
@@ -31,12 +31,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Se requieren todos los campos' })
       }
 
-      const result = await db.run(
-        'INSERT INTO products (name, price, store_id) VALUES (?, ?, ?)',
+      const result = await db.query(
+        'INSERT INTO products (name, price, store_id) VALUES ($1, $2, $3) RETURNING *',
         [name, price, storeId]
       )
 
-      res.status(201).json({ id: result.lastID, name, price, storeId })
+      res.status(201).json(result.rows[0])
     } catch (error) {
       console.error('Error al crear el producto:', error)
       res.status(500).json({ message: 'Error al crear el producto' })
