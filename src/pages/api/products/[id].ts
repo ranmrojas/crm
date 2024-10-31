@@ -14,7 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const product = await db.get('SELECT * FROM products WHERE id = ?', [id])
+      const result = await db.query('SELECT * FROM products WHERE id = $1', [id])
+      const product = result.rows[0]
+      
       if (product) {
         res.status(200).json(product)
       } else {
@@ -31,20 +33,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Se requieren todos los campos' })
       }
 
-      await db.run(
-        'UPDATE products SET name = ?, price = ? WHERE id = ?',
+      const result = await db.query(
+        'UPDATE products SET name = $1, price = $2 WHERE id = $3 RETURNING *',
         [name, price, id]
       )
 
-      res.status(200).json({ id, name, price })
+      if (result.rows[0]) {
+        res.status(200).json(result.rows[0])
+      } else {
+        res.status(404).json({ message: 'Producto no encontrado' })
+      }
     } catch (error) {
       console.error('Error al actualizar el producto:', error)
       res.status(500).json({ message: 'Error al actualizar el producto' })
     }
   } else if (req.method === 'DELETE') {
     try {
-      await db.run('DELETE FROM products WHERE id = ?', [id])
-      res.status(200).json({ message: 'Producto eliminado exitosamente' })
+      const result = await db.query(
+        'DELETE FROM products WHERE id = $1 RETURNING id',
+        [id]
+      )
+
+      if (result.rows[0]) {
+        res.status(200).json({ message: 'Producto eliminado exitosamente' })
+      } else {
+        res.status(404).json({ message: 'Producto no encontrado' })
+      }
     } catch (error) {
       console.error('Error al eliminar el producto:', error)
       res.status(500).json({ message: 'Error al eliminar el producto' })
