@@ -18,7 +18,11 @@ INSERT INTO permissions (name, description) VALUES
     ('customers.view', 'Permiso para ver los clientes'),
     ('customers.create', 'Permiso para crear clientes'),
     ('customers.edit', 'Permiso para editar clientes'),
-    ('reports.sales', 'Permiso para ver los reportes de ventas')
+    ('reports.sales', 'Permiso para ver los reportes de ventas'),
+    ('users.view', 'Permiso para ver la lista de usuarios'),
+    ('users.create', 'Permiso para crear usuarios'),
+    ('users.edit', 'Permiso para editar usuarios'),
+    ('users.delete', 'Permiso para eliminar usuarios')
 ON CONFLICT (name) DO NOTHING;
 
 -- Asignar TODOS los permisos al super_admin

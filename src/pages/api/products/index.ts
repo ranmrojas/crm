@@ -17,8 +17,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!storeId) {
         return res.status(400).json({ message: 'Se requiere el ID de la tienda' })
       }
+      // Cambiamos a consultar la tabla store_inventory
+      const result = await db.query(
+        `SELECT p.id, p.name, p.price, si.quantity 
+         FROM store_inventory si 
+         JOIN products p ON si.product_id = p.id 
+         WHERE si.store_id = $1`, 
+        [storeId]
+      )
 
-      const result = await db.query('SELECT * FROM products WHERE store_id = $1', [storeId])
       res.status(200).json(result.rows)
     } catch (error) {
       console.error('Error al obtener los productos:', error)

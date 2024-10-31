@@ -100,10 +100,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } else {
       res.setHeader('Allow', ['GET', 'POST'])
-      res.status(405).end(`Method ${req.method} Not Allowed`)
+      res.status(405).end(`Método ${req.method} no permitido`)
     }
   } catch (error) {
     console.error('Error en el handler:', error)
-    res.status(500).json({ message: 'Error interno del servidor' })
+    res.status(500).json({ message: 'Error en el servidor' })
   }
 }

@@ -333,4 +333,5 @@ CREATE INDEX IF NOT EXISTS idx_purchases_company ON purchases(company_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id);
 CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_id);
+CREATE INDEX IF NOT EXISTS idx_suppliers_company ON suppliers(company_id);CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_company ON suppliers(company_id);

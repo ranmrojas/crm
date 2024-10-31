@@ -18,7 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         SELECT stores.* 
         FROM stores 
         JOIN companies ON stores.company_id = companies.id 
-        WHERE companies.user_id = $1
+        JOIN user_companies ON companies.id = user_companies.company_id 
+        WHERE user_companies.user_id = $1
       `, [userId])
       
       res.status(200).json(result.rows)
