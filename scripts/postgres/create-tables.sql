@@ -319,6 +319,79 @@ CREATE TABLE IF NOT EXISTS company_settings (
     UNIQUE(company_id, key)
 );
 
+-- Bancos
+CREATE TABLE IF NOT EXISTS banks (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    account_number VARCHAR(50) UNIQUE,
+    swift_code VARCHAR(50),
+    iban VARCHAR(50),
+    currency VARCHAR(10) DEFAULT 'COP',
+    balance DECIMAL(15,2) DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Comprobantes de Pagos (para Ventas y Compras)
+CREATE TABLE IF NOT EXISTS payment_vouchers (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    bank_id INTEGER REFERENCES banks(id) ON DELETE SET NULL,
+    sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
+    purchase_id INTEGER REFERENCES purchases(id) ON DELETE SET NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    payment_method VARCHAR(50),
+    reference_number VARCHAR(50) UNIQUE,
+    notes TEXT,
+    status VARCHAR(20) DEFAULT 'completed', -- 'completed', 'pending', 'canceled'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Transferencias entre Bancos
+CREATE TABLE IF NOT EXISTS bank_transfers (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    from_bank_id INTEGER REFERENCES banks(id) ON DELETE CASCADE,
+    to_bank_id INTEGER REFERENCES banks(id) ON DELETE CASCADE,
+    amount DECIMAL(15,2) NOT NULL,
+    transfer_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    reference_number VARCHAR(50) UNIQUE,
+    notes TEXT,
+    status VARCHAR(20) DEFAULT 'completed', -- 'completed', 'pending', 'canceled'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Reportes de Movimiento de Bancos
+CREATE TABLE IF NOT EXISTS bank_movements (
+    id SERIAL PRIMARY KEY,
+    bank_id INTEGER REFERENCES banks(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL, -- 'deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'payment_sale', 'payment_purchase'
+    reference_id INTEGER, -- ID de la referencia según el tipo (p. ej., sale_id, purchase_id, bank_transfer_id)
+    reference_table VARCHAR(50), -- Tabla de referencia (p. ej., 'sales', 'purchases', 'bank_transfers')
+    amount DECIMAL(15,2) NOT NULL,
+    balance_after DECIMAL(15,2) NOT NULL,
+    movement_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configuración por Banco
+CREATE TABLE IF NOT EXISTS bank_settings (
+    id SERIAL PRIMARY KEY,
+    bank_id INTEGER REFERENCES banks(id) ON DELETE CASCADE,
+    key VARCHAR(50) NOT NULL,
+    value TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(bank_id, key)
+);
+
+
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name);
@@ -335,3 +408,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id);
 CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_company ON suppliers(company_id);CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_company ON suppliers(company_id);
+CREATE INDEX IF NOT EXISTS idx_banks_company ON banks(company_id);
+CREATE INDEX IF NOT EXISTS idx_payment_vouchers_bank ON payment_vouchers(bank_id);
+CREATE INDEX IF NOT EXISTS idx_payment_vouchers_company ON payment_vouchers(company_id);
+CREATE INDEX IF NOT EXISTS idx_bank_transfers_company ON bank_transfers(company_id);
+CREATE INDEX IF NOT EXISTS idx_bank_movements_bank ON bank_movements(bank_id);
